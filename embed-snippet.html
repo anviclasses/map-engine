@@ -1,0 +1,110 @@
+<!-- ================================================================
+  INTERACTIVE MAP PORTAL — Universal Embed Snippet
+  ----------------------------------------------------------------
+  1. Paste the HEAD BLOCK once per site (Blogger: Theme > Edit HTML,
+     just before </head>; or inside a Custom HTML/JavaScript gadget).
+  2. Drop a MAP BLOCK anywhere you want a portal to appear
+     (Blogger: in a post/page using the HTML view, or an HTML gadget).
+  Replace YOUR-USER, YOUR-REPO and VERSION with your GitHub details.
+
+  Mirrors the AI-MCQ engine: framework on GitHub -> jsDelivr CDN,
+  data JSON on GitHub -> fetched at runtime.
+================================================================ -->
+
+
+<!-- ══════════════════════════════════════════════════════════
+  HEAD BLOCK — paste ONCE per site
+══════════════════════════════════════════════════════════ -->
+<link  rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<link  rel="stylesheet" href="https://cdn.jsdelivr.net/gh/YOUR-USER/YOUR-REPO@VERSION/mapportal.css">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/YOUR-USER/YOUR-REPO@VERSION/mapportal.js"></script>
+
+
+<!-- ══════════════════════════════════════════════════════════
+  MAP BLOCKS — paste per page/post where you want a portal
+══════════════════════════════════════════════════════════ -->
+
+
+<!-- ────────────────────────────────────────────────────────
+  METHOD 1 — Single data JSON from GitHub via jsDelivr  (recommended)
+  Best for: one complete atlas hosted as a single file.
+
+  jsDelivr URL pattern (same as the AI-MCQ engine):
+    https://cdn.jsdelivr.net/gh/USER/REPO@TAG/path/to/data.json
+  Works with any public URL — jsDelivr, raw.githubusercontent.com, S3, etc.
+
+  The wrapper div MUST have a height (inline style or CSS).
+──────────────────────────────────────────────────────────── -->
+<div id="map-portal-1" style="height:620px"></div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+  window.loadMapPortal('map-portal-1', {
+
+    jsonUrl: 'https://cdn.jsdelivr.net/gh/YOUR-USER/YOUR-REPO@VERSION/india-exam-map.json',
+
+    settings: {
+      basemap: 'none',     // 'none' = clean atlas look | 'osm' = OpenStreetMap street tiles
+      start: 'world',       // node id to open first (defaults to meta.root)
+      show_labels: true     // region name chips on the map
+    }
+  });
+});
+</script>
+
+
+<!-- ────────────────────────────────────────────────────────
+  METHOD 2 — Inline JSON
+  Best for: a small self-contained map pasted directly in the page.
+──────────────────────────────────────────────────────────── -->
+<div id="map-portal-2" style="height:560px"></div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+  var mapData = { /* paste your map data JSON here */ };
+
+  window.initMapPortal('map-portal-2', mapData, {
+    basemap: 'none',
+    show_labels: true
+  });
+});
+</script>
+
+
+<!-- ────────────────────────────────────────────────────────
+  METHOD 3 — Multiple JSON files merged into one portal
+  Best for: splitting a big atlas across files (e.g. one file per
+  state's districts) so each loads from its own GitHub path.
+  meta is taken from the first file; all `nodes` objects are merged.
+──────────────────────────────────────────────────────────── -->
+<div id="map-portal-3" style="height:620px"></div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+  window.loadMapPortal('map-portal-3', {
+
+    jsonUrls: [
+      'https://cdn.jsdelivr.net/gh/YOUR-USER/YOUR-REPO@VERSION/india-base.json',
+      'https://cdn.jsdelivr.net/gh/YOUR-USER/YOUR-REPO@VERSION/uttar-pradesh.json',
+      'https://cdn.jsdelivr.net/gh/YOUR-USER/YOUR-REPO@VERSION/maharashtra.json'
+    ],
+
+    settings: { basemap: 'none', start: 'world', show_labels: true }
+  });
+});
+</script>
+
+
+<!-- ════════════════════════════════════════════════════════
+  BLOGGER TIP
+  ----------------------------------------------------------------
+  - Put the HEAD BLOCK once in Theme > Edit HTML (before </head>),
+    or inside one Custom HTML gadget in the sidebar/footer.
+  - Put a MAP BLOCK inside the post body using the "HTML view"
+    (the <> button), NOT the Compose view.
+  - Always give the wrapper div an explicit height, e.g.
+    style="height:620px" — without it the map has zero height.
+  - On mobile the info panel becomes a draggable bottom sheet;
+    a height of 70vh works well: style="height:70vh".
+════════════════════════════════════════════════════════ -->
