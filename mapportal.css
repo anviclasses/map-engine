@@ -32,12 +32,11 @@
     --mp-mono: "Spline Sans Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 
     position: relative;
-    display: block;
-    width: 100%;
-    height: 100%;
-    min-height: 460px;
     display: flex;
     flex-direction: column;
+    width: 100%;
+    height: auto;            /* grows with content — panel shows in full, no scroll */
+    min-height: 320px;
     background: var(--mp-water);
     color: var(--mp-ink);
     font-family: var(--mp-body);
@@ -52,8 +51,8 @@
 /* ---- Map stage: holds the map + its overlay rail/tooltip ---- */
 #mapportal-root-scope .mp-stage {
     position: relative;
-    flex: 1 1 auto;
-    min-height: 240px;
+    flex: 0 0 auto;
+    height: 520px;           /* default map height; override via the map_height setting */
     width: 100%;
     background: var(--mp-water);
 }
@@ -228,15 +227,13 @@
     position: relative;
     flex: 0 0 auto;
     width: 100%;
-    height: 40%;
-    min-height: 150px;
-    max-height: 46%;
+    height: auto;            /* full content height — no internal scroll */
     display: flex;
     flex-direction: column;
     background: linear-gradient(var(--mp-paper), var(--mp-paper));
     border-top: 2px solid var(--mp-line-strong);
     box-shadow: 0 -6px 18px rgba(22,35,58,.10);
-    overflow: hidden;
+    overflow: visible;
 }
 /* faint ruled-paper texture */
 #mapportal-root-scope .mp-panel::before {
@@ -310,25 +307,16 @@
 
 #mapportal-root-scope .mp-panel-body {
     position: relative;
-    flex: 1;
-    overflow-y: auto;
-    padding: 14px 20px 18px;
-    columns: 270px;
-    column-gap: 30px;
-    scrollbar-width: thin;
-    scrollbar-color: var(--mp-line-strong) transparent;
-}
-#mapportal-root-scope .mp-panel-body::-webkit-scrollbar { width: 8px; }
-#mapportal-root-scope .mp-panel-body::-webkit-scrollbar-thumb {
-    background: var(--mp-line-strong); border-radius: 8px;
+    flex: 0 0 auto;
+    overflow: visible;
+    padding: 16px 20px 22px;
 }
 
 /* section block */
 #mapportal-root-scope .mp-sec {
-    margin: 0 0 16px;
-    break-inside: avoid;
-    -webkit-column-break-inside: avoid;
+    margin: 0 0 20px;
 }
+#mapportal-root-scope .mp-sec:last-child { margin-bottom: 0; }
 #mapportal-root-scope .mp-sec-head {
     display: flex;
     align-items: center;
@@ -447,13 +435,8 @@
 
 /* ---------------- Responsive ---------------- */
 @media (max-width: 760px) {
-    #mapportal-root-scope .mp-panel {
-        height: 48%;
-        max-height: 52%;
-    }
-    #mapportal-root-scope .mp-panel-body { columns: auto; }
+    #mapportal-root-scope .mp-stage { height: 380px; }
     #mapportal-root-scope .mp-title { font-size: 21px; }
-    #mapportal-root-scope .mp-stage { min-height: 200px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
