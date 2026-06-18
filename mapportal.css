@@ -35,7 +35,9 @@
     display: block;
     width: 100%;
     height: 100%;
-    min-height: 420px;
+    min-height: 460px;
+    display: flex;
+    flex-direction: column;
     background: var(--mp-water);
     color: var(--mp-ink);
     font-family: var(--mp-body);
@@ -45,6 +47,15 @@
     border-radius: 10px;
     box-shadow: var(--mp-shadow);
     -webkit-text-size-adjust: 100%;
+}
+
+/* ---- Map stage: holds the map + its overlay rail/tooltip ---- */
+#mapportal-root-scope .mp-stage {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 240px;
+    width: 100%;
+    background: var(--mp-water);
 }
 #mapportal-root-scope .mp-ui,
 #mapportal-root-scope .mp-ui *,
@@ -211,22 +222,20 @@
 #mapportal-root-scope .mp-label.lvl-big   { font-size: 14px; letter-spacing:.01em; }
 
 /* ============================================================
-   GAZETTEER PANEL — the signature element
+   GAZETTEER PANEL — docked below the map (full-width)
    ============================================================ */
 #mapportal-root-scope .mp-panel {
-    position: absolute;
-    top: 64px;
-    right: 14px;
-    bottom: 14px;
-    width: 372px;
-    max-width: calc(100% - 28px);
+    position: relative;
+    flex: 0 0 auto;
+    width: 100%;
+    height: 40%;
+    min-height: 150px;
+    max-height: 46%;
     display: flex;
     flex-direction: column;
-    background:
-        linear-gradient(var(--mp-paper), var(--mp-paper));
-    border: 1px solid var(--mp-line-strong);
-    border-radius: 12px;
-    box-shadow: var(--mp-shadow);
+    background: linear-gradient(var(--mp-paper), var(--mp-paper));
+    border-top: 2px solid var(--mp-line-strong);
+    box-shadow: 0 -6px 18px rgba(22,35,58,.10);
     overflow: hidden;
 }
 /* faint ruled-paper texture */
@@ -242,10 +251,15 @@
 }
 #mapportal-root-scope .mp-panel-head {
     position: relative;
-    padding: 16px 18px 14px;
+    padding: 13px 20px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
     border-bottom: 1.5px solid var(--mp-line-strong);
     background: linear-gradient(180deg, var(--mp-paper-2), var(--mp-paper));
 }
+#mapportal-root-scope .mp-head-text { flex: 1 1 340px; min-width: 0; }
 #mapportal-root-scope .mp-stamp {
     display: inline-block;
     font-family: var(--mp-mono);
@@ -257,24 +271,25 @@
     border: 1.5px solid var(--mp-saffron);
     border-radius: 4px;
     padding: 2px 8px;
-    margin-bottom: 9px;
+    margin-bottom: 6px;
 }
 #mapportal-root-scope .mp-title {
     font-family: var(--mp-display);
     font-weight: 600;
-    font-size: 27px;
-    line-height: 1.06;
+    font-size: 23px;
+    line-height: 1.08;
     color: var(--mp-ink);
-    margin-bottom: 6px;
+    margin-bottom: 4px;
     letter-spacing: -.01em;
 }
 #mapportal-root-scope .mp-summary {
-    font-size: 13px;
+    font-size: 12.5px;
     color: var(--mp-ink-soft);
     line-height: 1.45;
 }
 #mapportal-root-scope .mp-explore {
-    margin-top: 12px;
+    margin-top: 0;
+    flex: none;
     display: inline-flex;
     align-items: center;
     gap: 7px;
@@ -297,7 +312,9 @@
     position: relative;
     flex: 1;
     overflow-y: auto;
-    padding: 4px 18px 20px;
+    padding: 14px 20px 18px;
+    columns: 270px;
+    column-gap: 30px;
     scrollbar-width: thin;
     scrollbar-color: var(--mp-line-strong) transparent;
 }
@@ -307,7 +324,11 @@
 }
 
 /* section block */
-#mapportal-root-scope .mp-sec { margin-top: 18px; }
+#mapportal-root-scope .mp-sec {
+    margin: 0 0 16px;
+    break-inside: avoid;
+    -webkit-column-break-inside: avoid;
+}
 #mapportal-root-scope .mp-sec-head {
     display: flex;
     align-items: center;
@@ -414,7 +435,7 @@
 #mapportal-root-scope .mp-error h4 { font-family: var(--mp-display); font-size: 20px; font-weight: 600; }
 #mapportal-root-scope .mp-error p { color: var(--mp-ink-soft); font-size: 13px; max-width: 320px; }
 
-/* panel close / collapse (mobile) */
+/* panel toggle no longer used in the stacked layout */
 #mapportal-root-scope .mp-panel-toggle { display: none; }
 
 /* keyboard focus */
@@ -424,29 +445,15 @@
     outline-offset: 2px;
 }
 
-/* ---------------- Responsive: bottom sheet ---------------- */
+/* ---------------- Responsive ---------------- */
 @media (max-width: 760px) {
     #mapportal-root-scope .mp-panel {
-        top: auto;
-        left: 0; right: 0; bottom: 0;
-        width: 100%;
-        max-width: 100%;
-        height: 52%;
-        border-radius: 16px 16px 0 0;
-        border-bottom: none;
-        transition: transform .28s ease;
+        height: 48%;
+        max-height: 52%;
     }
-    #mapportal-root-scope .mp-panel.is-collapsed { transform: translateY(calc(100% - 64px)); }
-    #mapportal-root-scope .mp-panel-toggle {
-        display: block;
-        position: absolute;
-        top: 8px; left: 50%; transform: translateX(-50%);
-        width: 44px; height: 5px; border-radius: 999px;
-        background: var(--mp-line-strong); border: none; cursor: pointer; z-index: 3;
-    }
-    #mapportal-root-scope .mp-panel-head { padding-top: 22px; }
-    #mapportal-root-scope .mp-rail { right: 14px; }
-    #mapportal-root-scope .mp-title { font-size: 23px; }
+    #mapportal-root-scope .mp-panel-body { columns: auto; }
+    #mapportal-root-scope .mp-title { font-size: 21px; }
+    #mapportal-root-scope .mp-stage { min-height: 200px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
