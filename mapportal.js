@@ -61,8 +61,7 @@ window.initMapPortal = function (containerId, data, settings) {
     var S = Object.assign({
         title: (data.meta && data.meta.title) || 'Interactive Map',
         basemap: 'none',          // 'none' (clean atlas) or 'osm' (street tiles)
-        height: null,             // e.g. '620px'; if null, uses container/host height
-        panel_height: null,       // gazetteer height below the map, e.g. '38%' or '300px'
+        map_height: null,         // height of the map area, e.g. '520px' or '60vh' (default 520px via CSS)
         start: null,              // node id to open first (defaults to meta.root)
         show_labels: true,
         max_label_features: 90    // hide region labels above this count to cut clutter
@@ -74,9 +73,9 @@ window.initMapPortal = function (containerId, data, settings) {
     /* ---------- DOM scaffold ---------- */
     host.innerHTML = '';
     var scope = el('div'); scope.id = 'mapportal-root-scope';
-    if (S.height) scope.style.height = S.height;
 
     var stage = el('div', 'mp-stage');     // holds the map + its overlay
+    if (S.map_height) stage.style.height = S.map_height;
     var mapEl = el('div', 'mp-map');
     var ui = el('div', 'mp-ui');
 
@@ -85,9 +84,8 @@ window.initMapPortal = function (containerId, data, settings) {
     rail.appendChild(crumbs);
 
     var tip = el('div', 'mp-tip');
-    var panel = el('aside', 'mp-panel');   // docked BELOW the map
+    var panel = el('aside', 'mp-panel');   // docked BELOW the map, grows to fit content
     panel.setAttribute('aria-label','Region information');
-    if (S.panel_height) { panel.style.height = S.panel_height; panel.style.maxHeight = S.panel_height; }
 
     ui.appendChild(rail);
     ui.appendChild(tip);
