@@ -62,6 +62,7 @@ window.initMapPortal = function (containerId, data, settings) {
         title: (data.meta && data.meta.title) || 'Interactive Map',
         basemap: 'none',          // 'none' (clean atlas) or 'osm' (street tiles)
         height: null,             // e.g. '620px'; if null, uses container/host height
+        panel_height: null,       // gazetteer height below the map, e.g. '38%' or '300px'
         start: null,              // node id to open first (defaults to meta.root)
         show_labels: true,
         max_label_features: 90    // hide region labels above this count to cut clutter
@@ -74,6 +75,8 @@ window.initMapPortal = function (containerId, data, settings) {
     host.innerHTML = '';
     var scope = el('div'); scope.id = 'mapportal-root-scope';
     if (S.height) scope.style.height = S.height;
+
+    var stage = el('div', 'mp-stage');     // holds the map + its overlay
     var mapEl = el('div', 'mp-map');
     var ui = el('div', 'mp-ui');
 
@@ -82,14 +85,16 @@ window.initMapPortal = function (containerId, data, settings) {
     rail.appendChild(crumbs);
 
     var tip = el('div', 'mp-tip');
-    var panel = el('aside', 'mp-panel');
+    var panel = el('aside', 'mp-panel');   // docked BELOW the map
     panel.setAttribute('aria-label','Region information');
+    if (S.panel_height) { panel.style.height = S.panel_height; panel.style.maxHeight = S.panel_height; }
 
     ui.appendChild(rail);
-    ui.appendChild(panel);
     ui.appendChild(tip);
-    scope.appendChild(mapEl);
-    scope.appendChild(ui);
+    stage.appendChild(mapEl);
+    stage.appendChild(ui);
+    scope.appendChild(stage);
+    scope.appendChild(panel);
     host.appendChild(scope);
 
     var loading = buildLoading('Drawing the map\u2026');
@@ -127,6 +132,7 @@ window.initMapPortal = function (containerId, data, settings) {
 
     map.on('load', function () {
         if (loading.parentNode) loading.parentNode.removeChild(loading);
+        map.resize();         // ensure the canvas matches the stage box
         bindRegionEvents();   // bound ONCE; layer is matched by id at dispatch time
         enterNode(ROOT, false);
     });
@@ -145,9 +151,9 @@ window.initMapPortal = function (containerId, data, settings) {
         }
     }
     function computePadding() {
-        var w = scope.clientWidth, h = scope.clientHeight;
-        if (w <= 760) return { top: 70, left: 20, right: 20, bottom: Math.round(h * 0.5) + 20 };
-        return { top: 80, left: 30, right: 400, bottom: 40 };
+        var w = scope.clientWidth;
+        var side = w <= 760 ? 24 : 40;
+        return { top: 72, left: side, right: side, bottom: 36 };
     }
 
     /* ---------- level rendering ---------- */
@@ -275,7 +281,6 @@ window.initMapPortal = function (containerId, data, settings) {
                 });
                 b.classList.add('is-active');
                 renderLocationPanel(node, loc);
-                if (scope.clientWidth <= 760) panel.classList.remove('is-collapsed');
             }
             b.addEventListener('click', open);
             b.addEventListener('keydown', function (ev) {
@@ -294,7 +299,6 @@ window.initMapPortal = function (containerId, data, settings) {
         var fid = idToFid[childId];
         if (fid != null) { selFid = fid; setFState(fid, 'selected', true); }
         renderPanel(childId);
-        if (scope.clientWidth <= 760) panel.classList.remove('is-collapsed');
     }
 
     function isDrillable(node) {
@@ -332,9 +336,11 @@ window.initMapPortal = function (containerId, data, settings) {
         panel.innerHTML = '';
 
         var head = el('div', 'mp-panel-head');
-        head.appendChild(el('span', 'mp-stamp', esc(node.level || 'Region')));
-        head.appendChild(el('h3', 'mp-title', esc(node.name)));
-        if (d.summary) head.appendChild(el('p', 'mp-summary', esc(d.summary)));
+        var txt = el('div', 'mp-head-text');
+        txt.appendChild(el('span', 'mp-stamp', esc(node.level || 'Region')));
+        txt.appendChild(el('h3', 'mp-title', esc(node.name)));
+        if (d.summary) txt.appendChild(el('p', 'mp-summary', esc(d.summary)));
+        head.appendChild(txt);
 
         // offer drill-in when this node (a clicked child or current) can expand
         if (nodeId !== currentId && isDrillable(node)) {
@@ -352,12 +358,6 @@ window.initMapPortal = function (containerId, data, settings) {
         var body = el('div', 'mp-panel-body');
         renderSections(body, d);
         panel.appendChild(body);
-
-        // re-attach mobile toggle
-        var toggle = el('button', 'mp-panel-toggle');
-        toggle.setAttribute('aria-label','Toggle details panel');
-        toggle.addEventListener('click', function () { panel.classList.toggle('is-collapsed'); });
-        panel.appendChild(toggle);
     }
 
     function renderLocationPanel(parentNode, loc) {
@@ -365,9 +365,11 @@ window.initMapPortal = function (containerId, data, settings) {
         var d = loc.data || {};
         panel.innerHTML = '';
         var head = el('div', 'mp-panel-head');
-        head.appendChild(el('span', 'mp-stamp', esc(loc.type || 'Place')));
-        head.appendChild(el('h3', 'mp-title', esc(loc.name)));
-        if (d.summary) head.appendChild(el('p', 'mp-summary', esc(d.summary)));
+        var txt = el('div', 'mp-head-text');
+        txt.appendChild(el('span', 'mp-stamp', esc(loc.type || 'Place')));
+        txt.appendChild(el('h3', 'mp-title', esc(loc.name)));
+        if (d.summary) txt.appendChild(el('p', 'mp-summary', esc(d.summary)));
+        head.appendChild(txt);
         var back = el('button', 'mp-explore',
             '<span class="mp-arrow">\u2190</span><span> Back to ' + esc(parentNode.name) + '</span>');
         back.addEventListener('click', function () {
@@ -379,10 +381,6 @@ window.initMapPortal = function (containerId, data, settings) {
         var body = el('div', 'mp-panel-body');
         renderSections(body, d);
         panel.appendChild(body);
-        var toggle = el('button', 'mp-panel-toggle');
-        toggle.setAttribute('aria-label', 'Toggle details panel');
-        toggle.addEventListener('click', function () { panel.classList.toggle('is-collapsed'); });
-        panel.appendChild(toggle);
     }
 
     function renderSections(body, d) {
