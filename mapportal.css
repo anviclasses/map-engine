@@ -1,0 +1,454 @@
+/* ==============================================================
+   Interactive Map Portal — Atlas/Gazetteer Edition
+   CSS — host on GitHub, serve via jsDelivr CDN:
+   https://cdn.jsdelivr.net/gh/YOUR-USER/mapportal-engine@VERSION/mapportal.css
+
+   Pairs with MapLibre GL (load its CSS BEFORE this file):
+     https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css
+
+   Scope note: we deliberately do NOT use `all:initial` on the root,
+   because MapLibre injects its own DOM into the map container and
+   relies on its own stylesheet. We reset only our overlay UI (.mp-ui).
+   ============================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Spline+Sans+Mono:wght@500;600&display=swap');
+
+#mapportal-root-scope {
+    --mp-ink: #16233a;          /* deep navy ink — text, boundaries */
+    --mp-ink-soft: #44506a;
+    --mp-paper: #f7f2e7;        /* warm parchment — panel */
+    --mp-paper-2: #efe7d4;
+    --mp-water: #c9dbe2;        /* pale slate — ocean / map bg */
+    --mp-line: #d8cbac;         /* parchment rule */
+    --mp-line-strong: #b9a87e;
+    --mp-saffron: #d9821b;      /* primary accent — selection, active level */
+    --mp-saffron-deep: #b56708;
+    --mp-teal: #2f7d72;         /* secondary — institutions / data */
+    --mp-crimson: #a8324a;      /* wildlife / alert */
+    --mp-shadow: 0 10px 34px rgba(22,35,58,.20);
+    --mp-shadow-sm: 0 3px 12px rgba(22,35,58,.14);
+    --mp-display: "Fraunces", Georgia, "Times New Roman", serif;
+    --mp-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    --mp-mono: "Spline Sans Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 420px;
+    background: var(--mp-water);
+    color: var(--mp-ink);
+    font-family: var(--mp-body);
+    font-size: 15px;
+    line-height: 1.5;
+    overflow: hidden;
+    border-radius: 10px;
+    box-shadow: var(--mp-shadow);
+    -webkit-text-size-adjust: 100%;
+}
+#mapportal-root-scope .mp-ui,
+#mapportal-root-scope .mp-ui *,
+#mapportal-root-scope .mp-ui *::before,
+#mapportal-root-scope .mp-ui *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: inherit;
+}
+
+/* ---- Map canvas host (left to MapLibre's own styling) ---- */
+#mapportal-root-scope .mp-map {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--mp-water);
+}
+#mapportal-root-scope .maplibregl-ctrl-attrib {
+    font-family: var(--mp-body);
+    font-size: 10px;
+}
+
+/* ---- Overlay UI layer ---- */
+#mapportal-root-scope .mp-ui {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+    font-family: var(--mp-body);
+    color: var(--mp-ink);
+}
+#mapportal-root-scope .mp-ui > * { pointer-events: auto; }
+
+/* ---- Top rail: title + breadcrumb / level ---- */
+#mapportal-root-scope .mp-rail {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    right: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    max-width: calc(100% - 28px);
+}
+#mapportal-root-scope .mp-crumbs {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 2px;
+    background: rgba(247,242,231,.92);
+    backdrop-filter: blur(4px);
+    border: 1px solid var(--mp-line);
+    border-radius: 999px;
+    padding: 5px 8px;
+    box-shadow: var(--mp-shadow-sm);
+    max-width: 100%;
+}
+#mapportal-root-scope .mp-crumb {
+    border: none;
+    background: transparent;
+    color: var(--mp-ink-soft);
+    font-family: var(--mp-body);
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: .01em;
+    padding: 4px 9px;
+    border-radius: 999px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .15s, color .15s;
+}
+#mapportal-root-scope .mp-crumb:hover { background: var(--mp-paper-2); color: var(--mp-ink); }
+#mapportal-root-scope .mp-crumb.is-current {
+    color: var(--mp-saffron-deep);
+    background: rgba(217,130,27,.12);
+    cursor: default;
+}
+#mapportal-root-scope .mp-crumb-sep { color: var(--mp-line-strong); font-size: 11px; padding: 0 1px; }
+
+/* ---- Floating region tooltip (follows cursor) ---- */
+#mapportal-root-scope .mp-tip {
+    position: absolute;
+    transform: translate(-50%, -130%);
+    background: var(--mp-ink);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 9px;
+    border-radius: 6px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .12s;
+    z-index: 7;
+    box-shadow: var(--mp-shadow-sm);
+}
+#mapportal-root-scope .mp-tip::after {
+    content: "";
+    position: absolute;
+    left: 50%; bottom: -5px;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: var(--mp-ink);
+    border-bottom: 0;
+}
+#mapportal-root-scope .mp-tip.show { opacity: 1; }
+
+/* ---- Location "block" markers ---- */
+#mapportal-root-scope .mp-loc {
+    pointer-events: auto;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--mp-paper);
+    border: 1.5px solid var(--mp-ink);
+    border-left-width: 5px;
+    border-left-color: var(--mp-saffron);
+    border-radius: 6px;
+    padding: 4px 9px 4px 7px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--mp-ink);
+    box-shadow: var(--mp-shadow-sm);
+    white-space: nowrap;
+    transform: translateY(-50%);
+    transition: transform .12s, box-shadow .12s;
+}
+#mapportal-root-scope .mp-loc:hover,
+#mapportal-root-scope .mp-loc.is-active {
+    transform: translateY(-50%) scale(1.06);
+    box-shadow: var(--mp-shadow);
+    border-left-color: var(--mp-saffron-deep);
+}
+#mapportal-root-scope .mp-loc .mp-loc-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--mp-saffron); flex: none;
+}
+#mapportal-root-scope .mp-loc-type {
+    font-family: var(--mp-mono);
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--mp-teal);
+}
+
+/* ---- Region label chips ---- */
+#mapportal-root-scope .mp-label {
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    font-family: var(--mp-body);
+    font-weight: 600;
+    color: var(--mp-ink);
+    text-shadow: 0 1px 0 rgba(247,242,231,.9), 0 0 4px rgba(247,242,231,.9);
+    white-space: nowrap;
+    user-select: none;
+}
+#mapportal-root-scope .mp-label.lvl-small { font-size: 10px; font-weight: 600; opacity: .9; }
+#mapportal-root-scope .mp-label.lvl-mid   { font-size: 12px; }
+#mapportal-root-scope .mp-label.lvl-big   { font-size: 14px; letter-spacing:.01em; }
+
+/* ============================================================
+   GAZETTEER PANEL — the signature element
+   ============================================================ */
+#mapportal-root-scope .mp-panel {
+    position: absolute;
+    top: 64px;
+    right: 14px;
+    bottom: 14px;
+    width: 372px;
+    max-width: calc(100% - 28px);
+    display: flex;
+    flex-direction: column;
+    background:
+        linear-gradient(var(--mp-paper), var(--mp-paper));
+    border: 1px solid var(--mp-line-strong);
+    border-radius: 12px;
+    box-shadow: var(--mp-shadow);
+    overflow: hidden;
+}
+/* faint ruled-paper texture */
+#mapportal-root-scope .mp-panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(
+        var(--mp-paper), var(--mp-paper) 27px,
+        rgba(185,168,126,.16) 28px, var(--mp-paper) 29px);
+    opacity: .5;
+    pointer-events: none;
+}
+#mapportal-root-scope .mp-panel-head {
+    position: relative;
+    padding: 16px 18px 14px;
+    border-bottom: 1.5px solid var(--mp-line-strong);
+    background: linear-gradient(180deg, var(--mp-paper-2), var(--mp-paper));
+}
+#mapportal-root-scope .mp-stamp {
+    display: inline-block;
+    font-family: var(--mp-mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--mp-saffron-deep);
+    border: 1.5px solid var(--mp-saffron);
+    border-radius: 4px;
+    padding: 2px 8px;
+    margin-bottom: 9px;
+}
+#mapportal-root-scope .mp-title {
+    font-family: var(--mp-display);
+    font-weight: 600;
+    font-size: 27px;
+    line-height: 1.06;
+    color: var(--mp-ink);
+    margin-bottom: 6px;
+    letter-spacing: -.01em;
+}
+#mapportal-root-scope .mp-summary {
+    font-size: 13px;
+    color: var(--mp-ink-soft);
+    line-height: 1.45;
+}
+#mapportal-root-scope .mp-explore {
+    margin-top: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border: none;
+    background: var(--mp-ink);
+    color: var(--mp-paper);
+    font-family: var(--mp-body);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: background .15s, transform .1s;
+}
+#mapportal-root-scope .mp-explore:hover { background: var(--mp-saffron-deep); }
+#mapportal-root-scope .mp-explore:active { transform: translateY(1px); }
+#mapportal-root-scope .mp-explore .mp-arrow { font-size: 15px; line-height: 1; }
+
+#mapportal-root-scope .mp-panel-body {
+    position: relative;
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 18px 20px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--mp-line-strong) transparent;
+}
+#mapportal-root-scope .mp-panel-body::-webkit-scrollbar { width: 8px; }
+#mapportal-root-scope .mp-panel-body::-webkit-scrollbar-thumb {
+    background: var(--mp-line-strong); border-radius: 8px;
+}
+
+/* section block */
+#mapportal-root-scope .mp-sec { margin-top: 18px; }
+#mapportal-root-scope .mp-sec-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mp-body);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--mp-ink);
+    margin-bottom: 9px;
+}
+#mapportal-root-scope .mp-sec-head .mp-tick {
+    width: 10px; height: 10px; border-radius: 2px; flex: none;
+    background: var(--mp-saffron);
+}
+#mapportal-root-scope .mp-sec[data-kind="institutions"] .mp-tick { background: var(--mp-teal); }
+#mapportal-root-scope .mp-sec[data-kind="agriculture"]  .mp-tick { background: #6f9e2f; }
+#mapportal-root-scope .mp-sec[data-kind="forests"]      .mp-tick { background: var(--mp-crimson); }
+#mapportal-root-scope .mp-sec[data-kind="places"]       .mp-tick { background: var(--mp-saffron); }
+#mapportal-root-scope .mp-sec[data-kind="facts"]        .mp-tick { background: var(--mp-ink); }
+
+/* demography — dotted-leader stat rows (gazetteer feel) */
+#mapportal-root-scope .mp-stat {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 6px 0;
+    border-bottom: 1px dotted var(--mp-line-strong);
+}
+#mapportal-root-scope .mp-stat:last-child { border-bottom: none; }
+#mapportal-root-scope .mp-stat-label { font-size: 13px; color: var(--mp-ink-soft); flex: none; }
+#mapportal-root-scope .mp-stat-lead {
+    flex: 1;
+    border-bottom: 1px dotted var(--mp-line-strong);
+    transform: translateY(-3px);
+    min-width: 10px;
+}
+#mapportal-root-scope .mp-stat-val {
+    font-family: var(--mp-mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--mp-ink);
+    text-align: right;
+    flex: none;
+}
+#mapportal-root-scope .mp-stat-note {
+    display: block;
+    width: 100%;
+    font-size: 11px;
+    color: var(--mp-ink-soft);
+    opacity: .85;
+    margin-top: -2px;
+}
+
+/* item cards (places / institutions / agri / wildlife) */
+#mapportal-root-scope .mp-item {
+    padding: 9px 11px;
+    background: rgba(255,255,255,.45);
+    border: 1px solid var(--mp-line);
+    border-radius: 8px;
+    margin-bottom: 7px;
+}
+#mapportal-root-scope .mp-item-top {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+}
+#mapportal-root-scope .mp-item-name { font-size: 13.5px; font-weight: 600; color: var(--mp-ink); }
+#mapportal-root-scope .mp-item-tag {
+    font-family: var(--mp-mono);
+    font-size: 9.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--mp-teal); white-space: nowrap; flex: none;
+}
+#mapportal-root-scope .mp-item-note { font-size: 12px; color: var(--mp-ink-soft); margin-top: 2px; }
+
+/* exam facts */
+#mapportal-root-scope .mp-fact {
+    position: relative;
+    padding: 5px 0 5px 20px;
+    font-size: 12.5px;
+    color: var(--mp-ink);
+    line-height: 1.5;
+}
+#mapportal-root-scope .mp-fact::before {
+    content: "\2731";
+    position: absolute; left: 2px; top: 5px;
+    color: var(--mp-saffron); font-size: 11px;
+}
+
+#mapportal-root-scope .mp-loading,
+#mapportal-root-scope .mp-error {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 14px; text-align: center; padding: 2rem;
+    background: var(--mp-water); z-index: 9;
+}
+#mapportal-root-scope .mp-spin {
+    width: 34px; height: 34px; border-radius: 50%;
+    border: 3px solid var(--mp-line); border-top-color: var(--mp-saffron);
+    animation: mp-rot .8s linear infinite;
+}
+@keyframes mp-rot { to { transform: rotate(360deg); } }
+#mapportal-root-scope .mp-loading p { color: var(--mp-ink-soft); font-size: 14px; }
+#mapportal-root-scope .mp-error .mp-stamp { border-color: var(--mp-crimson); color: var(--mp-crimson); }
+#mapportal-root-scope .mp-error h4 { font-family: var(--mp-display); font-size: 20px; font-weight: 600; }
+#mapportal-root-scope .mp-error p { color: var(--mp-ink-soft); font-size: 13px; max-width: 320px; }
+
+/* panel close / collapse (mobile) */
+#mapportal-root-scope .mp-panel-toggle { display: none; }
+
+/* keyboard focus */
+#mapportal-root-scope .mp-ui button:focus-visible,
+#mapportal-root-scope .mp-loc:focus-visible {
+    outline: 3px solid var(--mp-saffron);
+    outline-offset: 2px;
+}
+
+/* ---------------- Responsive: bottom sheet ---------------- */
+@media (max-width: 760px) {
+    #mapportal-root-scope .mp-panel {
+        top: auto;
+        left: 0; right: 0; bottom: 0;
+        width: 100%;
+        max-width: 100%;
+        height: 52%;
+        border-radius: 16px 16px 0 0;
+        border-bottom: none;
+        transition: transform .28s ease;
+    }
+    #mapportal-root-scope .mp-panel.is-collapsed { transform: translateY(calc(100% - 64px)); }
+    #mapportal-root-scope .mp-panel-toggle {
+        display: block;
+        position: absolute;
+        top: 8px; left: 50%; transform: translateX(-50%);
+        width: 44px; height: 5px; border-radius: 999px;
+        background: var(--mp-line-strong); border: none; cursor: pointer; z-index: 3;
+    }
+    #mapportal-root-scope .mp-panel-head { padding-top: 22px; }
+    #mapportal-root-scope .mp-rail { right: 14px; }
+    #mapportal-root-scope .mp-title { font-size: 23px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #mapportal-root-scope * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}
