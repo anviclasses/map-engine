@@ -1,0 +1,272 @@
+/* ==============================================================
+   Atlas Map Portal — Engine v1  (conflict-free, scoped to .atlasmap)
+   CSS — host on GitHub, serve via jsDelivr:
+   https://cdn.jsdelivr.net/gh/YOUR-USER/atlasmap-engine@VERSION/atlasmap.css
+
+   Every selector is prefixed with .atlasmap so it can safely live
+   inside Blogger / WordPress themes without leaking styles.
+   Optional web fonts (loaded in the embed head block, with fallbacks):
+     Spectral (display serif), Inter (UI sans), IBM Plex Mono (data).
+   ============================================================== */
+
+.atlasmap {
+  --amx-ink:      #1d2a3a;
+  --amx-ink-soft: #4a5563;
+  --amx-muted:    #7c7464;
+  --amx-line:     #c9bfa8;
+  --amx-paper:    #fbf7ec;   /* panels / cards            */
+  --amx-water:    #cfe1e8;   /* map background (ocean)     */
+  --amx-water-2:  #bcd6df;
+  --amx-land:     #e7dcc2;   /* default region fill        */
+  --amx-land-br:  #6f6346;   /* region boundary stroke     */
+  --amx-hover:    #f3cd8d;
+  --amx-select:   #e07a1f;   /* saffron — selected region  */
+  --amx-select-d: #b85c0c;
+  --amx-flag:     #ff7a18;   /* location pins              */
+  --amx-green:    #1f7a3d;
+  --amx-shadow:   0 1px 2px rgba(29,42,58,.08), 0 8px 24px rgba(29,42,58,.10);
+
+  --amx-serif: "Spectral", Georgia, "Times New Roman", serif;
+  --amx-sans:  "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --amx-mono:  "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  all: initial;
+  display: block;
+  font-family: var(--amx-sans);
+  color: var(--amx-ink);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  text-align: left;
+  box-sizing: border-box;
+}
+.atlasmap *, .atlasmap *::before, .atlasmap *::after { box-sizing: border-box; }
+
+/* ---------- shell ---------- */
+.atlasmap .amx-shell {
+  background: var(--amx-paper);
+  border: 1px solid var(--amx-line);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: var(--amx-shadow);
+  position: relative;
+}
+
+/* ---------- header / title block ---------- */
+.atlasmap .amx-head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+  padding: 18px 20px 14px;
+  background:
+    linear-gradient(180deg, #fffdf7 0%, var(--amx-paper) 100%);
+  border-bottom: 1px solid var(--amx-line);
+}
+.atlasmap .amx-titles { min-width: 0; }
+.atlasmap .amx-eyebrow {
+  font-family: var(--amx-mono);
+  font-size: 11px; letter-spacing: .22em; text-transform: uppercase;
+  color: var(--amx-select-d); margin: 0 0 4px;
+}
+.atlasmap .amx-title {
+  font-family: var(--amx-serif);
+  font-weight: 600; font-size: clamp(22px, 3.4vw, 30px);
+  line-height: 1.05; margin: 0; color: var(--amx-ink);
+  letter-spacing: -.01em;
+}
+.atlasmap .amx-sub {
+  margin: 6px 0 0; font-size: 13.5px; color: var(--amx-muted); max-width: 60ch;
+}
+
+/* ---------- toolbar ---------- */
+.atlasmap .amx-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.atlasmap .amx-search {
+  position: relative; display: flex; align-items: center;
+}
+.atlasmap .amx-search input {
+  font-family: var(--amx-sans); font-size: 13px;
+  padding: 8px 10px 8px 30px; width: 180px; max-width: 46vw;
+  border: 1px solid var(--amx-line); border-radius: 9px;
+  background: #fff; color: var(--amx-ink); outline: none;
+}
+.atlasmap .amx-search input:focus { border-color: var(--amx-select); box-shadow: 0 0 0 3px rgba(224,122,31,.16); }
+.atlasmap .amx-search svg { position: absolute; left: 9px; width: 14px; height: 14px; color: var(--amx-muted); pointer-events: none; }
+.atlasmap .amx-search-pop {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 40;
+  background: #fff; border: 1px solid var(--amx-line); border-radius: 9px;
+  box-shadow: var(--amx-shadow); max-height: 240px; overflow: auto; display: none;
+}
+.atlasmap .amx-search-pop.show { display: block; }
+.atlasmap .amx-search-pop button {
+  display: flex; justify-content: space-between; gap: 10px; width: 100%;
+  text-align: left; background: none; border: 0; border-bottom: 1px solid #f0ead9;
+  padding: 8px 11px; font: inherit; font-size: 13px; color: var(--amx-ink); cursor: pointer;
+}
+.atlasmap .amx-search-pop button:hover { background: #fbf3e2; }
+.atlasmap .amx-search-pop button small { color: var(--amx-muted); font-family: var(--amx-mono); }
+
+.atlasmap .amx-metric {
+  font-family: var(--amx-sans); font-size: 13px;
+  padding: 8px 28px 8px 10px; border: 1px solid var(--amx-line); border-radius: 9px;
+  background: #fff
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237c7464' stroke-width='1.4'/%3E%3C/svg%3E")
+    no-repeat right 10px center;
+  color: var(--amx-ink); cursor: pointer; appearance: none; -webkit-appearance: none;
+}
+.atlasmap .amx-btn {
+  font-family: var(--amx-sans); font-size: 13px; font-weight: 500;
+  padding: 8px 12px; border: 1px solid var(--amx-line); border-radius: 9px;
+  background: #fff; color: var(--amx-ink-soft); cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; transition: .15s;
+}
+.atlasmap .amx-btn:hover { border-color: var(--amx-select); color: var(--amx-select-d); }
+
+/* ---------- body ---------- */
+.atlasmap .amx-body { display: flex; align-items: stretch; }
+.atlasmap .amx-stage-wrap {
+  position: relative; flex: 1 1 auto; min-width: 0;
+  background:
+    radial-gradient(120% 120% at 50% 0%, var(--amx-water) 0%, var(--amx-water-2) 100%);
+}
+.atlasmap .amx-stage { display: block; width: 100%; height: auto; touch-action: none; cursor: grab; }
+.atlasmap .amx-stage.dragging { cursor: grabbing; }
+
+/* registration corner ticks (cartographic frame) */
+.atlasmap .amx-corners i {
+  position: absolute; width: 14px; height: 14px; pointer-events: none;
+  border-color: rgba(29,42,58,.35); border-style: solid; border-width: 0;
+}
+.atlasmap .amx-corners i:nth-child(1){ top:8px; left:8px; border-top-width:1.5px; border-left-width:1.5px;}
+.atlasmap .amx-corners i:nth-child(2){ top:8px; right:8px; border-top-width:1.5px; border-right-width:1.5px;}
+.atlasmap .amx-corners i:nth-child(3){ bottom:8px; left:8px; border-bottom-width:1.5px; border-left-width:1.5px;}
+.atlasmap .amx-corners i:nth-child(4){ bottom:8px; right:8px; border-bottom-width:1.5px; border-right-width:1.5px;}
+
+/* breadcrumb */
+.atlasmap .amx-crumbs {
+  position: absolute; top: 12px; left: 14px; right: 14px; z-index: 12;
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  font-family: var(--amx-mono); font-size: 12px;
+}
+.atlasmap .amx-crumbs button {
+  background: rgba(255,253,247,.92); border: 1px solid var(--amx-line);
+  border-radius: 7px; padding: 4px 9px; cursor: pointer; color: var(--amx-ink-soft);
+  font: inherit; backdrop-filter: blur(2px); transition: .15s;
+}
+.atlasmap .amx-crumbs button:hover { color: var(--amx-select-d); border-color: var(--amx-select); }
+.atlasmap .amx-crumbs .amx-crumb-here {
+  color: var(--amx-ink); font-weight: 600; cursor: default;
+  background: rgba(255,253,247,.92); border: 1px solid var(--amx-line);
+  border-radius: 7px; padding: 4px 9px;
+}
+.atlasmap .amx-crumbs .amx-sep { color: var(--amx-muted); }
+
+/* zoom controls */
+.atlasmap .amx-zoom {
+  position: absolute; right: 14px; bottom: 14px; z-index: 12;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.atlasmap .amx-zoom button {
+  width: 32px; height: 32px; border: 1px solid var(--amx-line); background: rgba(255,253,247,.95);
+  border-radius: 8px; cursor: pointer; font-size: 17px; line-height: 1; color: var(--amx-ink-soft);
+  display: grid; place-items: center; box-shadow: var(--amx-shadow); transition: .15s;
+}
+.atlasmap .amx-zoom button:hover { color: var(--amx-select-d); }
+
+/* legend */
+.atlasmap .amx-legend {
+  position: absolute; left: 14px; bottom: 14px; z-index: 12;
+  background: rgba(255,253,247,.95); border: 1px solid var(--amx-line);
+  border-radius: 10px; padding: 9px 11px; box-shadow: var(--amx-shadow);
+  font-size: 11px; color: var(--amx-ink-soft); max-width: 230px;
+}
+.atlasmap .amx-legend .amx-legend-t { font-family: var(--amx-mono); letter-spacing: .04em; text-transform: uppercase; font-size: 10px; color: var(--amx-muted); margin-bottom: 5px; }
+.atlasmap .amx-legend .amx-legend-bar { height: 10px; border-radius: 3px; border: 1px solid rgba(0,0,0,.08); }
+.atlasmap .amx-legend .amx-legend-scale { display: flex; justify-content: space-between; margin-top: 3px; font-family: var(--amx-mono); }
+
+/* svg region + location styling */
+.atlasmap .amx-region { stroke: var(--amx-land-br); stroke-width: .6; stroke-linejoin: round; cursor: pointer; transition: fill .12s ease, filter .12s ease; }
+.atlasmap .amx-region:hover { fill: var(--amx-hover) !important; }
+.atlasmap .amx-region.amx-selected { fill: var(--amx-select) !important; stroke: var(--amx-select-d); stroke-width: 1.1; }
+.atlasmap .amx-region.amx-has-child { stroke-dasharray: 0; }
+.atlasmap .amx-region.amx-highlight { stroke: var(--amx-select-d); stroke-width: 1.3; }
+.atlasmap .amx-region-dim { opacity: .35; }
+
+.atlasmap .amx-label { font-family: var(--amx-sans); font-weight: 600; fill: var(--amx-ink); paint-order: stroke; stroke: rgba(255,253,247,.9); stroke-width: 2.4px; pointer-events: none; text-anchor: middle; }
+.atlasmap .amx-label-sm { font-size: 9px; }
+
+.atlasmap .amx-pin { cursor: pointer; }
+.atlasmap .amx-pin circle { fill: var(--amx-flag); stroke: #fff; stroke-width: 1.4; transition: r .12s; }
+.atlasmap .amx-pin:hover circle { r: 6.5; }
+.atlasmap .amx-pin.amx-pin-sel circle { fill: var(--amx-green); }
+.atlasmap .amx-pin text { font-family: var(--amx-sans); font-size: 9px; font-weight: 600; fill: var(--amx-ink); paint-order: stroke; stroke: rgba(255,253,247,.92); stroke-width: 2.2px; pointer-events: none; }
+
+/* tooltip */
+.atlasmap .amx-tip {
+  position: fixed; z-index: 9999; pointer-events: none; opacity: 0;
+  background: var(--amx-ink); color: #fff; padding: 6px 9px; border-radius: 7px;
+  font-size: 12px; max-width: 220px; transform: translate(-50%, -130%); transition: opacity .1s;
+  box-shadow: 0 6px 18px rgba(0,0,0,.25);
+}
+.atlasmap .amx-tip b { color: #ffd9a8; }
+.atlasmap .amx-tip .amx-tip-v { font-family: var(--amx-mono); color: #ffd9a8; }
+
+/* ---------- info panel ---------- */
+.atlasmap .amx-panel {
+  flex: 0 0 312px; max-width: 312px; border-left: 1px solid var(--amx-line);
+  background: var(--amx-paper); padding: 16px; overflow: auto; max-height: 640px;
+}
+.atlasmap .amx-panel-empty { color: var(--amx-muted); font-size: 13.5px; }
+.atlasmap .amx-panel-empty .amx-stat-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 4px; }
+.atlasmap .amx-stat {
+  flex: 1 1 90px; background: #fff; border: 1px solid var(--amx-line); border-radius: 10px; padding: 10px 12px;
+}
+.atlasmap .amx-stat .amx-stat-n { font-family: var(--amx-serif); font-size: 24px; font-weight: 600; color: var(--amx-select-d); line-height: 1; }
+.atlasmap .amx-stat .amx-stat-l { font-size: 11px; color: var(--amx-muted); margin-top: 3px; }
+
+.atlasmap .amx-card-cat {
+  font-family: var(--amx-mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--amx-select-d); margin: 0 0 4px;
+}
+.atlasmap .amx-card-name { font-family: var(--amx-serif); font-size: 22px; font-weight: 600; margin: 0 0 2px; line-height: 1.1; }
+.atlasmap .amx-card-note { font-size: 13.5px; color: var(--amx-ink-soft); margin: 8px 0 0; }
+
+.atlasmap .amx-facts { list-style: none; margin: 14px 0 0; padding: 0; }
+.atlasmap .amx-facts li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px dashed #e3dac2; }
+.atlasmap .amx-facts li:last-child { border-bottom: 0; }
+.atlasmap .amx-facts .amx-fk { font-size: 12px; color: var(--amx-muted); flex: 0 0 auto; }
+.atlasmap .amx-facts .amx-fv { font-size: 13.5px; font-weight: 600; text-align: right; }
+.atlasmap .amx-facts li.amx-wide { flex-direction: column; gap: 3px; }
+.atlasmap .amx-facts li.amx-wide .amx-fv { text-align: left; font-weight: 500; color: var(--amx-ink-soft); }
+
+.atlasmap .amx-drill {
+  display: inline-flex; align-items: center; gap: 7px; margin-top: 16px;
+  background: var(--amx-select); color: #fff; border: 0; border-radius: 10px;
+  padding: 10px 14px; font: inherit; font-weight: 600; font-size: 13.5px; cursor: pointer;
+  box-shadow: 0 2px 8px rgba(224,122,31,.35); transition: .15s;
+}
+.atlasmap .amx-drill:hover { background: var(--amx-select-d); }
+.atlasmap .amx-coords { font-family: var(--amx-mono); font-size: 11px; color: var(--amx-muted); margin-top: 12px; }
+
+/* ---------- footer ---------- */
+.atlasmap .amx-foot {
+  display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 9px 16px; border-top: 1px solid var(--amx-line);
+  font-size: 11.5px; color: var(--amx-muted); background: #fffdf7;
+}
+.atlasmap .amx-foot a { color: var(--amx-select-d); text-decoration: none; }
+
+/* ---------- loader / sleep ---------- */
+.atlasmap .amx-center { display: grid; place-items: center; min-height: 360px; text-align: center; padding: 40px; }
+.atlasmap .amx-spin { width: 34px; height: 34px; border: 3px solid var(--amx-line); border-top-color: var(--amx-select); border-radius: 50%; animation: amx-spin 1s linear infinite; }
+@keyframes amx-spin { to { transform: rotate(360deg); } }
+.atlasmap .amx-center p { color: var(--amx-muted); margin-top: 14px; font-size: 14px; }
+
+/* ---------- responsive ---------- */
+@media (max-width: 720px) {
+  .atlasmap .amx-body { flex-direction: column; }
+  .atlasmap .amx-panel { flex-basis: auto; max-width: none; border-left: 0; border-top: 1px solid var(--amx-line); max-height: none; }
+  .atlasmap .amx-search input { width: 130px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlasmap .amx-region, .atlasmap .amx-pin circle, .atlasmap .amx-tip { transition: none; }
+  .atlasmap .amx-spin { animation-duration: 2.4s; }
+}
