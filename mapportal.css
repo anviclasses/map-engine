@@ -79,6 +79,20 @@
     font-size: 10px;
 }
 
+/* ---- Cooperative-gesture hint (lets the blog page scroll past the map) ---- */
+#mapportal-root-scope .maplibregl-cooperative-gesture-screen {
+    font-family: var(--mp-body);
+    color: #fff;
+}
+#mapportal-root-scope .maplibregl-cooperative-gesture-screen .maplibregl-desktop-message,
+#mapportal-root-scope .maplibregl-cooperative-gesture-screen .maplibregl-mobile-message {
+    background: rgba(22,35,58,.82);
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 10px 16px;
+}
+
 /* ---- Overlay UI layer ---- */
 #mapportal-root-scope .mp-ui {
     position: absolute;
