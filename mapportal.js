@@ -29,6 +29,59 @@ window.MAPPORTAL_CONFIG = window.MAPPORTAL_CONFIG || {};
 var TINTS = ['#efe2c4','#e7d6b2','#ecdcb9','#e3d1ab','#f1e6cc','#e9dbb6','#ead7ad','#f0e3c2'];
 var WATER = '#c9dbe2';
 
+/* ------------------------------------------------------------------
+   THEMATIC OVERLAY CATALOG
+   Each map node may carry an `overlays:[]` array. Every overlay names a
+   `category` whose default look is defined here. A `kind` is one of:
+     'line'  — rivers, railways, roads, waterways, canals
+     'fill'  — lakes, national parks, sanctuaries, wetlands, forests
+     'point' — popular locations / points of interest
+   Any field can be overridden per-overlay via `overlay.style{}` or
+   `overlay.kind`. Unknown categories fall back to a neutral style.
+   ------------------------------------------------------------------ */
+var OVERLAY_CATALOG = {
+    /* ---- waters & channels (lines) ---- */
+    river:      { kind:'line', color:'#2f7da8', width:2.0,            label:'Rivers' },
+    waterway:   { kind:'line', color:'#3a8fb8', width:1.8,            label:'Waterways' },
+    stream:     { alias:'waterway' },
+    canal:      { kind:'line', color:'#4aa3c4', width:1.6, dash:[2,1.6], label:'Canals' },
+
+    /* ---- transport (lines) ---- */
+    railway:    { kind:'line', color:'#33312e', width:1.7, casing:'#f7f2e7', dash:[1.5,1.5], label:'Railways' },
+    rail:       { alias:'railway' },
+    road:       { kind:'line', color:'#d9821b', width:2.0, casing:'#7a4a12', label:'Roadways' },
+    roadway:    { alias:'road' },
+    highway:    { kind:'line', color:'#c8862f', width:2.8, casing:'#7a4a12', label:'Highways' },
+
+    /* ---- water bodies & protected lands (fills) ---- */
+    lake:       { kind:'fill', color:'#9cc3dd', outline:'#3f7da0', opacity:0.62, label:'Lakes' },
+    water:      { alias:'lake' },
+    reservoir:  { kind:'fill', color:'#a7cadf', outline:'#3f7da0', opacity:0.62, label:'Reservoirs' },
+    national_park:      { kind:'fill', color:'#4b7a3f', outline:'#2f5226', opacity:0.45, label:'National Parks' },
+    wildlife_sanctuary: { kind:'fill', color:'#6f9e2f', outline:'#46651c', opacity:0.42, label:'Wildlife Sanctuaries' },
+    sanctuary:  { alias:'wildlife_sanctuary' },
+    wetland:    { kind:'fill', color:'#2f7d72', outline:'#1d5049', opacity:0.40, label:'Wetlands' },
+    forest:     { kind:'fill', color:'#38632c', outline:'#244019', opacity:0.45, label:'Forests' },
+
+    /* ---- points of interest ---- */
+    popular_location: { kind:'point', color:'#d9821b', stroke:'#7a4a12', radius:5.5, label:'Popular Locations' },
+    poi:        { alias:'popular_location' },
+    place:      { alias:'popular_location' }
+};
+
+function resolveCat(ov) {
+    var key = String((ov && ov.category) || '').toLowerCase();
+    var c = OVERLAY_CATALOG[key], guard = 0;
+    while (c && c.alias && guard++ < 5) c = OVERLAY_CATALOG[c.alias];
+    if (!c) c = { kind: (ov && ov.kind) || 'point', color:'#8a763f', outline:'#4a3f22',
+                  label: (ov && (ov.name || ov.category)) || 'Layer' };
+    return c;
+}
+function catKind(ov) { var c = resolveCat(ov); return (ov && ov.kind) || c.kind || 'point'; }
+function hasFeatures(ov) {
+    return !!(ov && ov.geojson && ov.geojson.features && ov.geojson.features.length);
+}
+
 function el(tag, cls, html) {
     var e = document.createElement(tag);
     if (cls) e.className = cls;
@@ -65,7 +118,8 @@ window.initMapPortal = function (containerId, data, settings) {
         start: null,              // node id to open first (defaults to meta.root)
         show_labels: true,
         max_label_features: 90,   // hide region labels above this count to cut clutter
-        cooperative_gestures: true // plain page scroll passes through; ctrl/⌘+scroll or two fingers zoom the map
+        overlays: true,           // master switch for thematic overlay layers
+        legend_collapsed: null    // null = auto (expanded on desktop, collapsed on mobile)
     }, settings);
 
     var NODES = data.nodes || {};
@@ -86,17 +140,16 @@ window.initMapPortal = function (containerId, data, settings) {
     var panel = el('aside', 'mp-panel');
     panel.setAttribute('aria-label','Region information');
 
-    // overlay holds only the map-anchored UI (breadcrumbs + hover tooltip)
+    var legend = el('div', 'mp-legend');
+    legend.setAttribute('aria-label','Map layers');
+    legend.style.display = 'none';
+
     ui.appendChild(rail);
+    ui.appendChild(panel);
+    ui.appendChild(legend);
     ui.appendChild(tip);
-
-    // map + its overlay live in a wrapper; the gazetteer panel sits BELOW it
-    var mapWrap = el('div', 'mp-mapwrap');
-    mapWrap.appendChild(mapEl);
-    mapWrap.appendChild(ui);
-
-    scope.appendChild(mapWrap);
-    scope.appendChild(panel);
+    scope.appendChild(mapEl);
+    scope.appendChild(ui);
     host.appendChild(scope);
 
     var loading = buildLoading('Drawing the map\u2026');
@@ -108,6 +161,16 @@ window.initMapPortal = function (containerId, data, settings) {
     var markers = [];         // active HTML markers (labels + locations)
     var idToFid = {};         // childNodeId -> numeric feature id (for feature-state)
     var hoverFid = null, selFid = null;
+
+    /* ---------- thematic overlay state ---------- */
+    var overlayLayerIds = [];          // every MapLibre layer id we added for overlays
+    var overlaySourceIds = [];         // every overlay geojson source id
+    var overlayHandlers = [];          // [type, layerId, fn] bound per overlay layer
+    var activeOverlays = [];           // [{ov, cat, kind, layerIds, catKey}]
+    var clickableOverlayLayerIds = []; // layers that intercept clicks (suppress drill)
+    var overlayPopup = null;
+    var layerVis = {};                 // category visibility, persisted across nodes
+    var legendCollapsed = (S.legend_collapsed != null) ? !!S.legend_collapsed : null;
 
     /* ---------- map ---------- */
     var style = { version: 8, sources: {}, layers: [
@@ -125,8 +188,7 @@ window.initMapPortal = function (containerId, data, settings) {
     var map = new maplibregl.Map({
         container: mapEl, style: style,
         center: [80, 22], zoom: 3, attributionControl: false,
-        dragRotate: false, pitchWithRotate: false, maxZoom: 16,
-        cooperativeGestures: S.cooperative_gestures !== false
+        dragRotate: false, pitchWithRotate: false, maxZoom: 16
     });
     map.touchZoomRotate && map.touchZoomRotate.disableRotation();
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
@@ -153,15 +215,14 @@ window.initMapPortal = function (containerId, data, settings) {
         }
     }
     function computePadding() {
-        var w = scope.clientWidth;
-        // the gazetteer panel now sits BELOW the map, so the canvas is
-        // unobstructed — pad symmetrically and let regions use full width
-        if (w <= 760) return { top: 64, left: 16, right: 16, bottom: 24 };
-        return { top: 80, left: 36, right: 36, bottom: 40 };
+        var w = scope.clientWidth, h = scope.clientHeight;
+        if (w <= 760) return { top: 70, left: 20, right: 20, bottom: Math.round(h * 0.5) + 20 };
+        return { top: 80, left: 30, right: 400, bottom: 40 };
     }
 
     /* ---------- level rendering ---------- */
     function clearLayers() {
+        clearOverlays();
         ['mp-fill','mp-line','mp-line-case'].forEach(function (id) {
             if (map.getLayer(id)) map.removeLayer(id);
         });
@@ -180,6 +241,8 @@ window.initMapPortal = function (containerId, data, settings) {
         var hasRegions = node.boundaries && node.boundaries.features && node.boundaries.features.length;
         if (hasRegions) addRegions(node);
         if (node.locations && node.locations.length) addLocations(node);
+        addOverlays(node);
+        buildLegend(node);
 
         camera(node, animate);
         renderPanel(nodeId);       // show this node's own profile
@@ -248,6 +311,7 @@ window.initMapPortal = function (containerId, data, settings) {
         });
         map.on('click', 'mp-fill', function (e) {
             if (!e.features.length) return;
+            if (overlayHitAt(e.point)) return;   // an overlay feature handled this click
             var nid = e.features[0].properties.nodeId;
             if (nid && NODES[nid]) selectChild(nid);
         });
@@ -296,6 +360,208 @@ window.initMapPortal = function (containerId, data, settings) {
             m._mpLocEl = b;
             markers.push(m);
         });
+    }
+
+    /* ==================================================================
+       THEMATIC OVERLAYS — rivers, railways, roads, waterways, lakes,
+       national parks, sanctuaries, wetlands, popular locations, etc.
+       Drawn as native MapLibre fill/line/circle layers (no glyphs needed),
+       with hover tooltips, click popups and a toggleable legend.
+       ================================================================== */
+    function clearOverlays() {
+        if (overlayPopup) { overlayPopup.remove(); overlayPopup = null; }
+        overlayHandlers.forEach(function (h) { map.off(h[0], h[1], h[2]); });
+        overlayHandlers = [];
+        overlayLayerIds.forEach(function (id) { if (map.getLayer(id)) map.removeLayer(id); });
+        overlayLayerIds = [];
+        overlaySourceIds.forEach(function (id) { if (map.getSource(id)) map.removeSource(id); });
+        overlaySourceIds = [];
+        activeOverlays = [];
+        clickableOverlayLayerIds = [];
+    }
+
+    /* visibility is remembered per category as the user drills around */
+    function layerKey(ov) { return 'lv:' + ((ov && (ov.category || ov.id)) || '?'); }
+    function isVisible(ov) {
+        var k = layerKey(ov);
+        if (layerVis[k] === undefined) layerVis[k] = (ov.visible !== false);
+        return layerVis[k];
+    }
+    function setOverlayVisible(catKey, on) {
+        layerVis['lv:' + catKey] = on;
+        var v = on ? 'visible' : 'none';
+        activeOverlays.forEach(function (a) {
+            if (a.catKey === catKey) a.layerIds.forEach(function (id) {
+                if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', v);
+            });
+        });
+    }
+
+    function addOverlays(node) {
+        if (S.overlays === false) return;
+        var ovs = (node.overlays || []).filter(hasFeatures);
+        if (!ovs.length) return;
+
+        // stack fills under lines under points
+        var rank = { fill: 0, line: 1, point: 2 };
+        ovs = ovs.slice().sort(function (a, b) { return rank[catKind(a)] - rank[catKind(b)]; });
+
+        ovs.forEach(function (ov) {
+            var cat  = resolveCat(ov);
+            var kind = ov.kind || cat.kind || 'point';
+            var st   = Object.assign({}, cat, ov.style || {});
+            var oid  = String(ov.id || ('ov-' + Math.random().toString(36).slice(2)))
+                          .replace(/[^a-zA-Z0-9_-]/g, '-');
+            var srcId = 'mp-ov-' + oid;
+            if (map.getSource(srcId)) srcId += '-' + overlaySourceIds.length;
+
+            var vis = isVisible(ov) ? 'visible' : 'none';
+            map.addSource(srcId, { type: 'geojson',
+                data: { type: 'FeatureCollection', features: ov.geojson.features } });
+            overlaySourceIds.push(srcId);
+
+            var layerIds = [], clickLayer = null;
+
+            if (kind === 'fill') {
+                var fillId = srcId + '-fill';
+                map.addLayer({ id: fillId, type: 'fill', source: srcId,
+                    layout: { visibility: vis },
+                    paint: { 'fill-color': st.color || '#6f9e2f',
+                             'fill-opacity': st.opacity != null ? st.opacity : 0.45 } });
+                var outId = srcId + '-outline';
+                map.addLayer({ id: outId, type: 'line', source: srcId,
+                    layout: { visibility: vis, 'line-join': 'round' },
+                    paint: { 'line-color': st.outline || st.color || '#46651c', 'line-width': 1.4 } });
+                layerIds.push(fillId, outId);
+                clickLayer = fillId;
+            } else if (kind === 'line') {
+                if (st.casing) {
+                    var caseId = srcId + '-case';
+                    map.addLayer({ id: caseId, type: 'line', source: srcId,
+                        layout: { visibility: vis, 'line-cap': 'round', 'line-join': 'round' },
+                        paint: { 'line-color': st.casing, 'line-width': (st.width || 2) + 2.6 } });
+                    layerIds.push(caseId);
+                }
+                var lineId = srcId + '-line';
+                var lp = { 'line-color': st.color || '#2f7da8', 'line-width': st.width || 2 };
+                if (st.dash) lp['line-dasharray'] = st.dash;
+                map.addLayer({ id: lineId, type: 'line', source: srcId,
+                    layout: { visibility: vis, 'line-cap': 'round', 'line-join': 'round' },
+                    paint: lp });
+                layerIds.push(lineId);
+                clickLayer = lineId;
+            } else { // point
+                var cId = srcId + '-circle';
+                map.addLayer({ id: cId, type: 'circle', source: srcId,
+                    layout: { visibility: vis },
+                    paint: { 'circle-radius': st.radius || 5,
+                             'circle-color': st.color || '#d9821b',
+                             'circle-stroke-color': st.stroke || '#7a4a12',
+                             'circle-stroke-width': 1.6,
+                             'circle-opacity': 0.95 } });
+                layerIds.push(cId);
+                clickLayer = cId;
+            }
+
+            layerIds.forEach(function (id) { overlayLayerIds.push(id); });
+            activeOverlays.push({ ov: ov, cat: cat, kind: kind, layerIds: layerIds,
+                                  catKey: ov.category || ov.id });
+            if (clickLayer) {
+                clickableOverlayLayerIds.push(clickLayer);
+                bindOverlayInteract(clickLayer, ov, cat);
+            }
+        });
+    }
+
+    function bindOverlayInteract(layerId, ov, cat) {
+        var move = function (e) {
+            if (!e.features.length) return;
+            map.getCanvas().style.cursor = 'pointer';
+            var f = e.features[0];
+            tip.textContent = (f.properties && f.properties.name) || ov.name || cat.label || '';
+            tip.classList.add('show');
+            tip.style.left = e.point.x + 'px';
+            tip.style.top  = e.point.y + 'px';
+        };
+        var leave = function () { map.getCanvas().style.cursor = ''; tip.classList.remove('show'); };
+        var click = function (e) {
+            if (!e.features.length) return;
+            openOverlayPopup(e.lngLat, e.features[0], ov, cat);
+        };
+        map.on('mousemove', layerId, move);
+        map.on('mouseleave', layerId, leave);
+        map.on('click', layerId, click);
+        overlayHandlers.push(['mousemove', layerId, move],
+                             ['mouseleave', layerId, leave],
+                             ['click', layerId, click]);
+    }
+
+    function openOverlayPopup(lngLat, feature, ov, cat) {
+        var p = feature.properties || {};
+        var name = p.name || ov.name || cat.label || 'Feature';
+        var tag  = p.type || ov.name || cat.label || '';
+        var note = p.note || p.summary || p.description || '';
+        var html = '<div class="mp-pop">'
+            + (tag ? '<span class="mp-pop-tag" style="--pc:' + (cat.color || '#16233a') + '">'
+                     + esc(tag) + '</span>' : '')
+            + '<div class="mp-pop-name">' + esc(name) + '</div>'
+            + (note ? '<div class="mp-pop-note">' + esc(note) + '</div>' : '')
+            + '</div>';
+        if (overlayPopup) overlayPopup.remove();
+        overlayPopup = new maplibregl.Popup({ closeButton: true, closeOnClick: true,
+                offset: 12, maxWidth: '262px' })
+            .setLngLat(lngLat).setHTML(html).addTo(map);
+    }
+
+    function overlayHitAt(point) {
+        var ids = clickableOverlayLayerIds.filter(function (id) { return map.getLayer(id); });
+        if (!ids.length) return false;
+        try { return map.queryRenderedFeatures(point, { layers: ids }).length > 0; }
+        catch (err) { return false; }
+    }
+
+    /* ---------- legend / layer control ---------- */
+    function buildLegend(node) {
+        legend.innerHTML = '';
+        var ovs = (S.overlays === false) ? [] : (node.overlays || []).filter(hasFeatures);
+        if (!ovs.length) { legend.style.display = 'none'; return; }
+        legend.style.display = '';
+
+        if (legendCollapsed === null) legendCollapsed = scope.clientWidth <= 760; // auto
+
+        var head = el('button', 'mp-legend-head');
+        head.setAttribute('type', 'button');
+        head.innerHTML = '<span class="mp-legend-title">Map layers</span>'
+            + '<span class="mp-legend-caret">\u25BE</span>';
+        head.addEventListener('click', function () {
+            legendCollapsed = !legendCollapsed;
+            legend.classList.toggle('is-collapsed', legendCollapsed);
+        });
+        legend.appendChild(head);
+
+        var body = el('div', 'mp-legend-body');
+        ovs.forEach(function (ov) {
+            var cat  = resolveCat(ov);
+            var kind = ov.kind || cat.kind || 'point';
+            var catKey = ov.category || ov.id;
+            var row = el('label', 'mp-legend-row');
+
+            var cb = document.createElement('input');
+            cb.type = 'checkbox'; cb.checked = isVisible(ov);
+            cb.addEventListener('change', function () { setOverlayVisible(catKey, cb.checked); });
+
+            var sw = el('span', 'mp-swatch mp-swatch-' + kind);
+            sw.style.setProperty('--sw', cat.color || '#888');
+            if (cat.outline || cat.stroke) sw.style.setProperty('--swb', cat.outline || cat.stroke);
+
+            row.appendChild(cb);
+            row.appendChild(sw);
+            row.appendChild(el('span', 'mp-legend-label', esc(ov.name || cat.label || catKey)));
+            row.appendChild(el('span', 'mp-legend-count', String(ov.geojson.features.length)));
+            body.appendChild(row);
+        });
+        legend.appendChild(body);
+        legend.classList.toggle('is-collapsed', !!legendCollapsed);
     }
 
     /* clicking a child region: show its profile + offer to drill in */
@@ -449,10 +715,7 @@ window.initMapPortal = function (containerId, data, settings) {
     var raf;
     window.addEventListener('resize', function () {
         clearTimeout(raf);
-        raf = setTimeout(function () {
-            map.resize();
-            if (currentId) camera(NODES[currentId], false);
-        }, 200);
+        raf = setTimeout(function () { if (currentId) camera(NODES[currentId], false); }, 200);
     });
 
     return { map: map, goTo: function (id) { enterNode(id, true); } };
@@ -523,7 +786,22 @@ window.loadMapPortal = function (containerId, opts) {
         if (ok.length > 1) {
             merged = { version: ok[0].version, portal_type: ok[0].portal_type,
                        meta: ok[0].meta, nodes: {} };
-            ok.forEach(function (p) { Object.assign(merged.nodes, p.nodes || {}); });
+            ok.forEach(function (p) {
+                var ns = p.nodes || {};
+                Object.keys(ns).forEach(function (id) {
+                    var incoming = ns[id];
+                    var existing = merged.nodes[id];
+                    if (existing) {
+                        // combine overlays additively so an overlay-only file can
+                        // enrich a node already defined in the base file
+                        var combined = (existing.overlays || []).concat(incoming.overlays || []);
+                        merged.nodes[id] = Object.assign({}, existing, incoming);
+                        if (combined.length) merged.nodes[id].overlays = combined;
+                    } else {
+                        merged.nodes[id] = incoming;
+                    }
+                });
+            });
         }
         host.innerHTML = '';
         window.initMapPortal(containerId, merged, opts.settings || {});
