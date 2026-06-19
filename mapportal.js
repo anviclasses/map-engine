@@ -61,7 +61,7 @@ window.initMapPortal = function (containerId, data, settings) {
     var S = Object.assign({
         title: (data.meta && data.meta.title) || 'Interactive Map',
         basemap: 'none',          // 'none' (clean atlas) or 'osm' (street tiles)
-        map_height: null,         // height of the map area, e.g. '520px' or '60vh' (default 520px via CSS)
+        height: null,             // e.g. '620px'; if null, uses container/host height
         start: null,              // node id to open first (defaults to meta.root)
         show_labels: true,
         max_label_features: 90    // hide region labels above this count to cut clutter
@@ -73,9 +73,7 @@ window.initMapPortal = function (containerId, data, settings) {
     /* ---------- DOM scaffold ---------- */
     host.innerHTML = '';
     var scope = el('div'); scope.id = 'mapportal-root-scope';
-
-    var stage = el('div', 'mp-stage');     // holds the map + its overlay
-    if (S.map_height) stage.style.height = S.map_height;
+    if (S.height) scope.style.height = S.height;
     var mapEl = el('div', 'mp-map');
     var ui = el('div', 'mp-ui');
 
@@ -84,14 +82,19 @@ window.initMapPortal = function (containerId, data, settings) {
     rail.appendChild(crumbs);
 
     var tip = el('div', 'mp-tip');
-    var panel = el('aside', 'mp-panel');   // docked BELOW the map, grows to fit content
+    var panel = el('aside', 'mp-panel');
     panel.setAttribute('aria-label','Region information');
 
+    // overlay holds only the map-anchored UI (breadcrumbs + hover tooltip)
     ui.appendChild(rail);
     ui.appendChild(tip);
-    stage.appendChild(mapEl);
-    stage.appendChild(ui);
-    scope.appendChild(stage);
+
+    // map + its overlay live in a wrapper; the gazetteer panel sits BELOW it
+    var mapWrap = el('div', 'mp-mapwrap');
+    mapWrap.appendChild(mapEl);
+    mapWrap.appendChild(ui);
+
+    scope.appendChild(mapWrap);
     scope.appendChild(panel);
     host.appendChild(scope);
 
@@ -130,7 +133,6 @@ window.initMapPortal = function (containerId, data, settings) {
 
     map.on('load', function () {
         if (loading.parentNode) loading.parentNode.removeChild(loading);
-        map.resize();         // ensure the canvas matches the stage box
         bindRegionEvents();   // bound ONCE; layer is matched by id at dispatch time
         enterNode(ROOT, false);
     });
@@ -150,8 +152,10 @@ window.initMapPortal = function (containerId, data, settings) {
     }
     function computePadding() {
         var w = scope.clientWidth;
-        var side = w <= 760 ? 24 : 40;
-        return { top: 72, left: side, right: side, bottom: 36 };
+        // the gazetteer panel now sits BELOW the map, so the canvas is
+        // unobstructed — pad symmetrically and let regions use full width
+        if (w <= 760) return { top: 64, left: 16, right: 16, bottom: 24 };
+        return { top: 80, left: 36, right: 36, bottom: 40 };
     }
 
     /* ---------- level rendering ---------- */
@@ -279,6 +283,7 @@ window.initMapPortal = function (containerId, data, settings) {
                 });
                 b.classList.add('is-active');
                 renderLocationPanel(node, loc);
+                if (scope.clientWidth <= 760) panel.classList.remove('is-collapsed');
             }
             b.addEventListener('click', open);
             b.addEventListener('keydown', function (ev) {
@@ -297,6 +302,7 @@ window.initMapPortal = function (containerId, data, settings) {
         var fid = idToFid[childId];
         if (fid != null) { selFid = fid; setFState(fid, 'selected', true); }
         renderPanel(childId);
+        if (scope.clientWidth <= 760) panel.classList.remove('is-collapsed');
     }
 
     function isDrillable(node) {
@@ -334,11 +340,9 @@ window.initMapPortal = function (containerId, data, settings) {
         panel.innerHTML = '';
 
         var head = el('div', 'mp-panel-head');
-        var txt = el('div', 'mp-head-text');
-        txt.appendChild(el('span', 'mp-stamp', esc(node.level || 'Region')));
-        txt.appendChild(el('h3', 'mp-title', esc(node.name)));
-        if (d.summary) txt.appendChild(el('p', 'mp-summary', esc(d.summary)));
-        head.appendChild(txt);
+        head.appendChild(el('span', 'mp-stamp', esc(node.level || 'Region')));
+        head.appendChild(el('h3', 'mp-title', esc(node.name)));
+        if (d.summary) head.appendChild(el('p', 'mp-summary', esc(d.summary)));
 
         // offer drill-in when this node (a clicked child or current) can expand
         if (nodeId !== currentId && isDrillable(node)) {
@@ -356,6 +360,12 @@ window.initMapPortal = function (containerId, data, settings) {
         var body = el('div', 'mp-panel-body');
         renderSections(body, d);
         panel.appendChild(body);
+
+        // re-attach mobile toggle
+        var toggle = el('button', 'mp-panel-toggle');
+        toggle.setAttribute('aria-label','Toggle details panel');
+        toggle.addEventListener('click', function () { panel.classList.toggle('is-collapsed'); });
+        panel.appendChild(toggle);
     }
 
     function renderLocationPanel(parentNode, loc) {
@@ -363,11 +373,9 @@ window.initMapPortal = function (containerId, data, settings) {
         var d = loc.data || {};
         panel.innerHTML = '';
         var head = el('div', 'mp-panel-head');
-        var txt = el('div', 'mp-head-text');
-        txt.appendChild(el('span', 'mp-stamp', esc(loc.type || 'Place')));
-        txt.appendChild(el('h3', 'mp-title', esc(loc.name)));
-        if (d.summary) txt.appendChild(el('p', 'mp-summary', esc(d.summary)));
-        head.appendChild(txt);
+        head.appendChild(el('span', 'mp-stamp', esc(loc.type || 'Place')));
+        head.appendChild(el('h3', 'mp-title', esc(loc.name)));
+        if (d.summary) head.appendChild(el('p', 'mp-summary', esc(d.summary)));
         var back = el('button', 'mp-explore',
             '<span class="mp-arrow">\u2190</span><span> Back to ' + esc(parentNode.name) + '</span>');
         back.addEventListener('click', function () {
@@ -379,6 +387,10 @@ window.initMapPortal = function (containerId, data, settings) {
         var body = el('div', 'mp-panel-body');
         renderSections(body, d);
         panel.appendChild(body);
+        var toggle = el('button', 'mp-panel-toggle');
+        toggle.setAttribute('aria-label', 'Toggle details panel');
+        toggle.addEventListener('click', function () { panel.classList.toggle('is-collapsed'); });
+        panel.appendChild(toggle);
     }
 
     function renderSections(body, d) {
@@ -435,7 +447,10 @@ window.initMapPortal = function (containerId, data, settings) {
     var raf;
     window.addEventListener('resize', function () {
         clearTimeout(raf);
-        raf = setTimeout(function () { if (currentId) camera(NODES[currentId], false); }, 200);
+        raf = setTimeout(function () {
+            map.resize();
+            if (currentId) camera(NODES[currentId], false);
+        }, 200);
     });
 
     return { map: map, goTo: function (id) { enterNode(id, true); } };
