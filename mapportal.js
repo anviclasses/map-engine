@@ -64,7 +64,8 @@ window.initMapPortal = function (containerId, data, settings) {
         height: null,             // e.g. '620px'; if null, uses container/host height
         start: null,              // node id to open first (defaults to meta.root)
         show_labels: true,
-        max_label_features: 90    // hide region labels above this count to cut clutter
+        max_label_features: 90,   // hide region labels above this count to cut clutter
+        cooperative_gestures: true // plain page scroll passes through; ctrl/⌘+scroll or two fingers zoom the map
     }, settings);
 
     var NODES = data.nodes || {};
@@ -124,7 +125,8 @@ window.initMapPortal = function (containerId, data, settings) {
     var map = new maplibregl.Map({
         container: mapEl, style: style,
         center: [80, 22], zoom: 3, attributionControl: false,
-        dragRotate: false, pitchWithRotate: false, maxZoom: 16
+        dragRotate: false, pitchWithRotate: false, maxZoom: 16,
+        cooperativeGestures: S.cooperative_gestures !== false
     });
     map.touchZoomRotate && map.touchZoomRotate.disableRotation();
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
