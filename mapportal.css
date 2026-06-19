@@ -32,11 +32,10 @@
     --mp-mono: "Spline Sans Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 
     position: relative;
-    display: flex;
-    flex-direction: column;
+    display: block;
     width: 100%;
-    height: auto;
-    min-height: 100%;
+    height: 100%;
+    min-height: 420px;
     background: var(--mp-water);
     color: var(--mp-ink);
     font-family: var(--mp-body);
@@ -57,15 +56,6 @@
     font-family: inherit;
 }
 
-/* ---- Map area: top region that grows to fill space above the panel ---- */
-#mapportal-root-scope .mp-mapwrap {
-    position: relative;
-    flex: 1 1 auto;
-    min-height: 440px;
-    width: 100%;
-    background: var(--mp-water);
-}
-
 /* ---- Map canvas host (left to MapLibre's own styling) ---- */
 #mapportal-root-scope .mp-map {
     position: absolute;
@@ -77,20 +67,6 @@
 #mapportal-root-scope .maplibregl-ctrl-attrib {
     font-family: var(--mp-body);
     font-size: 10px;
-}
-
-/* ---- Cooperative-gesture hint (lets the blog page scroll past the map) ---- */
-#mapportal-root-scope .maplibregl-cooperative-gesture-screen {
-    font-family: var(--mp-body);
-    color: #fff;
-}
-#mapportal-root-scope .maplibregl-cooperative-gesture-screen .maplibregl-desktop-message,
-#mapportal-root-scope .maplibregl-cooperative-gesture-screen .maplibregl-mobile-message {
-    background: rgba(22,35,58,.82);
-    font-size: 14px;
-    font-weight: 600;
-    border-radius: 8px;
-    padding: 10px 16px;
 }
 
 /* ---- Overlay UI layer ---- */
@@ -238,20 +214,20 @@
    GAZETTEER PANEL — the signature element
    ============================================================ */
 #mapportal-root-scope .mp-panel {
-    position: relative;
-    flex: 0 0 auto;
-    height: auto;
-    width: 100%;
-    max-width: 100%;
+    position: absolute;
+    top: 64px;
+    right: 14px;
+    bottom: 14px;
+    width: 372px;
+    max-width: calc(100% - 28px);
     display: flex;
     flex-direction: column;
     background:
         linear-gradient(var(--mp-paper), var(--mp-paper));
-    border: none;
-    border-top: 1.5px solid var(--mp-line-strong);
-    border-radius: 0;
-    box-shadow: 0 -6px 18px rgba(22,35,58,.10);
-    overflow: visible;
+    border: 1px solid var(--mp-line-strong);
+    border-radius: 12px;
+    box-shadow: var(--mp-shadow);
+    overflow: hidden;
 }
 /* faint ruled-paper texture */
 #mapportal-root-scope .mp-panel::before {
@@ -319,9 +295,15 @@
 
 #mapportal-root-scope .mp-panel-body {
     position: relative;
-    flex: 0 0 auto;
-    overflow: visible;
+    flex: 1;
+    overflow-y: auto;
     padding: 4px 18px 20px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--mp-line-strong) transparent;
+}
+#mapportal-root-scope .mp-panel-body::-webkit-scrollbar { width: 8px; }
+#mapportal-root-scope .mp-panel-body::-webkit-scrollbar-thumb {
+    background: var(--mp-line-strong); border-radius: 8px;
 }
 
 /* section block */
@@ -442,14 +424,139 @@
     outline-offset: 2px;
 }
 
-/* ---------------- Responsive: content-height docked panel ---------------- */
+/* ============================================================
+   THEMATIC LAYER LEGEND / CONTROL  (rivers, railways, parks…)
+   ============================================================ */
+#mapportal-root-scope .mp-legend {
+    position: absolute;
+    left: 14px;
+    bottom: 30px;
+    width: 238px;
+    max-width: calc(100% - 28px);
+    background: rgba(247,242,231,.94);
+    backdrop-filter: blur(4px);
+    border: 1px solid var(--mp-line-strong);
+    border-radius: 12px;
+    box-shadow: var(--mp-shadow);
+    overflow: hidden;
+}
+#mapportal-root-scope .mp-legend-head {
+    width: 100%;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    border: none; cursor: pointer;
+    background: linear-gradient(180deg, var(--mp-paper-2), var(--mp-paper));
+    border-bottom: 1.5px solid var(--mp-line-strong);
+    padding: 9px 12px;
+    font-family: var(--mp-body); color: var(--mp-ink);
+}
+#mapportal-root-scope .mp-legend.is-collapsed .mp-legend-head { border-bottom: none; }
+#mapportal-root-scope .mp-legend-title {
+    font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+}
+#mapportal-root-scope .mp-legend-caret {
+    font-size: 11px; color: var(--mp-ink-soft); transition: transform .18s;
+}
+#mapportal-root-scope .mp-legend.is-collapsed .mp-legend-caret { transform: rotate(-90deg); }
+#mapportal-root-scope .mp-legend-body {
+    max-height: 256px; overflow-y: auto;
+    padding: 6px 8px;
+    scrollbar-width: thin; scrollbar-color: var(--mp-line-strong) transparent;
+}
+#mapportal-root-scope .mp-legend-body::-webkit-scrollbar { width: 8px; }
+#mapportal-root-scope .mp-legend-body::-webkit-scrollbar-thumb {
+    background: var(--mp-line-strong); border-radius: 8px;
+}
+#mapportal-root-scope .mp-legend.is-collapsed .mp-legend-body { display: none; }
+#mapportal-root-scope .mp-legend-row {
+    display: flex; align-items: center; gap: 9px;
+    padding: 5px 6px; border-radius: 7px; cursor: pointer;
+    font-size: 12.5px; color: var(--mp-ink);
+}
+#mapportal-root-scope .mp-legend-row:hover { background: var(--mp-paper-2); }
+#mapportal-root-scope .mp-legend-row input {
+    accent-color: var(--mp-saffron-deep);
+    width: 15px; height: 15px; flex: none; cursor: pointer;
+}
+#mapportal-root-scope .mp-legend-label { flex: 1; font-weight: 600; }
+#mapportal-root-scope .mp-legend-count {
+    font-family: var(--mp-mono); font-size: 10.5px; color: var(--mp-ink-soft);
+    background: rgba(185,168,126,.22); border-radius: 999px; padding: 1px 7px; flex: none;
+}
+
+/* legend swatches reflect each category's on-map look */
+#mapportal-root-scope .mp-swatch { flex: none; width: 18px; height: 14px; position: relative; }
+#mapportal-root-scope .mp-swatch-fill {
+    border-radius: 3px; background: var(--sw);
+    border: 1.5px solid var(--swb, rgba(22,35,58,.4)); opacity: .85;
+}
+#mapportal-root-scope .mp-swatch-line::before {
+    content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 3px;
+    transform: translateY(-50%); background: var(--sw); border-radius: 2px;
+}
+#mapportal-root-scope .mp-swatch-point::before {
+    content: ""; position: absolute; left: 50%; top: 50%; width: 11px; height: 11px;
+    transform: translate(-50%,-50%); background: var(--sw);
+    border: 1.5px solid var(--swb, #7a4a12); border-radius: 50%;
+}
+
+/* ---- overlay feature popups ---- */
+#mapportal-root-scope .maplibregl-popup-content {
+    background: var(--mp-paper);
+    border: 1px solid var(--mp-line-strong);
+    border-radius: 10px;
+    box-shadow: var(--mp-shadow);
+    padding: 11px 13px;
+    font-family: var(--mp-body);
+}
+#mapportal-root-scope .maplibregl-popup-close-button {
+    color: var(--mp-ink-soft); font-size: 17px; padding: 0 6px; line-height: 1.2;
+}
+#mapportal-root-scope .mp-pop-tag {
+    display: inline-block;
+    font-family: var(--mp-mono); font-size: 9.5px; font-weight: 600;
+    letter-spacing: .06em; text-transform: uppercase;
+    color: #fff; background: var(--pc, #16233a);
+    border-radius: 4px; padding: 2px 7px; margin-bottom: 6px;
+}
+#mapportal-root-scope .mp-pop-name {
+    font-family: var(--mp-display); font-weight: 600; font-size: 17px;
+    color: var(--mp-ink); line-height: 1.15;
+}
+#mapportal-root-scope .mp-pop-note {
+    font-size: 12px; color: var(--mp-ink-soft); margin-top: 5px; line-height: 1.45;
+}
+#mapportal-root-scope .maplibregl-popup-anchor-top    .maplibregl-popup-tip { border-bottom-color: var(--mp-paper); }
+#mapportal-root-scope .maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: var(--mp-paper); }
+#mapportal-root-scope .maplibregl-popup-anchor-left   .maplibregl-popup-tip { border-right-color: var(--mp-paper); }
+#mapportal-root-scope .maplibregl-popup-anchor-right  .maplibregl-popup-tip { border-left-color: var(--mp-paper); }
+
+/* ---------------- Responsive: bottom sheet ---------------- */
 @media (max-width: 760px) {
     #mapportal-root-scope .mp-panel {
-        height: auto;
+        top: auto;
+        left: 0; right: 0; bottom: 0;
+        width: 100%;
+        max-width: 100%;
+        height: 52%;
+        border-radius: 16px 16px 0 0;
+        border-bottom: none;
+        transition: transform .28s ease;
     }
-    #mapportal-root-scope .mp-mapwrap { min-height: 360px; }
+    #mapportal-root-scope .mp-panel.is-collapsed { transform: translateY(calc(100% - 64px)); }
+    #mapportal-root-scope .mp-panel-toggle {
+        display: block;
+        position: absolute;
+        top: 8px; left: 50%; transform: translateX(-50%);
+        width: 44px; height: 5px; border-radius: 999px;
+        background: var(--mp-line-strong); border: none; cursor: pointer; z-index: 3;
+    }
+    #mapportal-root-scope .mp-panel-head { padding-top: 22px; }
     #mapportal-root-scope .mp-rail { right: 14px; }
     #mapportal-root-scope .mp-title { font-size: 23px; }
+    #mapportal-root-scope .mp-legend {
+        bottom: auto; top: 58px; left: 14px;
+        width: 210px;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
